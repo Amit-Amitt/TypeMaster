@@ -23,6 +23,7 @@ function App() {
           <Route path="/summary" element={<Summary />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:userId" element={<Profile />} />
         </Routes>
       </main>
     </Router>

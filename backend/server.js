@@ -14,9 +14,11 @@ app.use(express.json());
 // Routes
 const authRoutes = require("./routes/authRoutes");
 const resultRoutes = require("./routes/resultRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/results", resultRoutes);
+app.use("/api/users", userRoutes);
 
 app.get("/", (req, res) => {
   res.send("Typing Speed Backend Running 🚀");

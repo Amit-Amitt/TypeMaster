@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Keyboard, LogOut, Layout, User, Menu, X, Home, Zap, Settings } from "lucide-react";
+import { Keyboard, LogOut, Layout, User, Menu, X, Home, Zap, Settings, Search } from "lucide-react";
+import axios from "axios";
 import { Button } from "./ui/Button";
 import SettingsModal from "./SettingsModal";
 
@@ -9,6 +10,10 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const userName = localStorage.getItem("userName");
@@ -37,6 +42,30 @@ export default function Navbar() {
     localStorage.removeItem("token");
     navigate("/login");
   };
+
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(`http://localhost:5000/api/users/search?query=${searchQuery}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setSearchResults(res.data.users);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   const navLinks = [
     { name: "Arena", path: "/test", icon: <Keyboard size={18} /> },
@@ -67,6 +96,67 @@ export default function Navbar() {
                 Type<span className="text-primary">Master</span>
               </span>
             </Link>
+
+            {/* Desktop Search */}
+            <div className="hidden lg:block relative flex-1 max-w-sm mx-8">
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" size={18} />
+                <input 
+                  type="text"
+                  placeholder="Find players..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setIsSearchOpen(true);
+                  }}
+                  onFocus={() => setIsSearchOpen(true)}
+                  className="w-full bg-bg-main/50 border border-border-subtle rounded-full py-2.5 pl-12 pr-4 text-sm text-text-main focus:outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all shadow-sm"
+                />
+              </div>
+
+              {/* Search Results Dropdown */}
+              <AnimatePresence>
+                {isSearchOpen && (searchQuery.length >= 2) && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute top-full mt-3 w-full bg-bg-card border border-border-subtle rounded-2xl shadow-2xl overflow-hidden glass-nav z-[60]"
+                  >
+                    <div className="max-h-72 overflow-y-auto p-2">
+                      {isSearching ? (
+                        <div className="p-4 text-center text-text-muted text-sm italic">Searching characters...</div>
+                      ) : searchResults.length > 0 ? (
+                        searchResults.map((user) => (
+                          <button
+                            key={user._id}
+                            onClick={() => {
+                              navigate(`/profile/${user._id}`);
+                              setIsSearchOpen(false);
+                              setSearchQuery("");
+                            }}
+                            className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-all text-left"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-text-main font-bold border border-primary/20 shrink-0">
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-text-main font-bold truncate">{user.name}</p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black uppercase text-primary tracking-widest px-1.5 py-0.5 bg-primary/10 rounded">Lvl {user.level}</span>
+                                <span className="text-[10px] text-text-muted font-medium italic">{user.bestWpm} WPM</span>
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="p-4 text-center text-text-muted text-sm">No players found matching "{searchQuery}"</div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Desktop Links */}
             <div className="hidden lg:flex items-center space-x-1 bg-bg-main/50 p-1 rounded-full border border-border-subtle shadow-sm">

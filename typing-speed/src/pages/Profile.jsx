@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import axios from "axios";
 import { motion } from "framer-motion";
 import { 
@@ -26,26 +27,40 @@ const KEYBOARD_LAYOUT = [
 ];
 
 export default function Profile() {
+  const { userId } = useParams();
   const [user, setUser] = useState(null);
   const [results, setResults] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [bio, setBio] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
+  const isOwnProfile = !userId;
+
   useEffect(() => {
     fetchProfile();
-  }, []);
+  }, [userId]);
 
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      const [userRes, resultsRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/auth/me", { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get("http://localhost:5000/api/results/my-results", { headers: { Authorization: `Bearer ${token}` } })
-      ]);
-      setUser(userRes.data.user);
-      setBio(userRes.data.user.bio || "");
-      setResults(resultsRes.data);
+      
+      if (isOwnProfile) {
+        const [userRes, resultsRes] = await Promise.all([
+          axios.get("http://localhost:5000/api/auth/me", { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get("http://localhost:5000/api/results/my-results", { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        setUser(userRes.data.user);
+        setBio(userRes.data.user.bio || "");
+        setResults(resultsRes.data);
+      } else {
+        const [userRes, resultsRes] = await Promise.all([
+          axios.get(`http://localhost:5000/api/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`http://localhost:5000/api/results/user-results/${userId}`, { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        setUser(userRes.data.user);
+        setBio(userRes.data.user.bio || "");
+        setResults(resultsRes.data);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -54,9 +69,17 @@ export default function Profile() {
   };
 
   const handleUpdateBio = async () => {
-    // Mock update logic for now or implement if backend supports it
-    // user.bio = bio; 
-    setIsEditing(false);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put("http://localhost:5000/api/users/profile", 
+        { bio }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setUser({ ...user, bio });
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Update bio error:", err);
+    }
   };
 
   // Aggregate mistakes across all results for the heatmap
@@ -98,28 +121,51 @@ export default function Profile() {
                  </div>
                  <h2 className="text-2xl font-black text-text-main mb-1">{user.name}</h2>
                  <p className="text-text-muted text-sm font-medium mb-6">{user.email}</p>
-                 
-                 <div className="text-left space-y-4 pt-6 bg-bg-main/50 border-border-subtle">
-                    <div className="flex items-center gap-3 text-text-muted text-sm italic">
+                                  <div className="text-left pt-6 border-t border-border-subtle mt-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted mb-3 flex items-center gap-2">
+                       <User size={12} /> About Player
+                    </h3>
+                    <div className="relative group">
                        {isEditing ? (
-                         <textarea 
-                           className="w-full bg-bg-main/50 border border-border-subtle rounded-xl p-3 text-text-main text-sm focus:border-primary outline-none"
-                           value={bio}
-                           onChange={(e) => setBio(e.target.value)}
-                           placeholder="Write a short bio..."
-                         />
+                         <div className="relative">
+                           <textarea 
+                             className="w-full bg-bg-main/50 border border-primary/20 rounded-2xl p-4 text-text-main text-sm focus:border-primary/50 outline-none transition-all resize-none min-h-[120px] shadow-inner"
+                             value={bio}
+                             onChange={(e) => setBio(e.target.value)}
+                             placeholder="Tell the world about your typing journey..."
+                           />
+                           <div className="absolute bottom-3 right-3 text-[10px] font-bold text-text-muted/50 bg-bg-main/80 px-2 py-1 rounded-md">
+                             {bio.length}/200
+                           </div>
+                         </div>
                        ) : (
-                         <p>"{bio || "No bio set yet. Click edit to add personality!"}"</p>
+                         <div className="bg-bg-main/30 border border-border-subtle/50 rounded-2xl p-5 relative overflow-hidden group-hover:bg-bg-main/50 transition-all duration-500">
+                           <p className="text-text-main text-sm leading-relaxed relative z-10 italic">
+                             {bio || "This player hasn't shared their story yet. A blank canvas waiting for words..."}
+                           </p>
+                           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                             <User size={40} className="text-primary" />
+                           </div>
+                         </div>
                        )}
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      className="w-full border border-white/5 bg-white/5 text-xs font-black uppercase tracking-widest py-3"
-                      onClick={() => isEditing ? handleUpdateBio() : setIsEditing(true)}
-                    >
-                       {isEditing ? <><Check size={14} className="mr-2" /> Save Profile</> : <><Edit3 size={14} className="mr-2" /> Edit Bio</>}
-                    </Button>
-                 </div>
+                    
+                    {isOwnProfile && (
+                      <div className="mt-4">
+                        <Button 
+                          variant="ghost" 
+                          className={`w-full text-xs font-black uppercase tracking-widest py-3 rounded-xl transition-all border ${
+                            isEditing 
+                              ? "bg-primary text-white border-primary shadow-lg shadow-primary/20 hover:scale-[1.02]" 
+                              : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
+                          }`}
+                          onClick={() => isEditing ? handleUpdateBio() : setIsEditing(true)}
+                        >
+                           {isEditing ? <><Check size={14} className="mr-2" /> Save Changes</> : <><Edit3 size={14} className="mr-2" /> Edit Biography</>}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
               </Card>
 
               <Card className="bg-bg-card border-border-subtle shadow-sm">

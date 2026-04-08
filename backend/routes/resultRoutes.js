@@ -120,6 +120,16 @@ router.get("/my-results", authMiddleware, async (req, res) => {
   }
 });
 
+// GET RESULTS FOR SPECIFIC USER (protected)
+router.get("/user-results/:userId", authMiddleware, async (req, res) => {
+  try {
+    const results = await Result.find({ userId: req.params.userId }).sort({ createdAt: -1 });
+    res.status(200).json(results);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching results", error: error.message });
+  }
+});
+
 // LEADERBOARD (public)
 router.get("/leaderboard", async (req, res) => {
   try {
