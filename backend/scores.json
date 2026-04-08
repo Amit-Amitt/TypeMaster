@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1774872358143,
+    "name": "suhani",
+    "email": "sharmasuhani8423@gamil.com",
+    "wpm": 4,
+    "accuracy": 22,
+    "mistakes": 38,
+    "createdAt": "2026-03-30T12:05:58.143Z"
+  },
+  {
+    "id": 1774942049910,
+    "name": "suhani",
+    "email": "sharmasuhani8423@gamil.com",
+    "wpm": 12,
+    "accuracy": 48,
+    "mistakes": 34,
+    "createdAt": "2026-03-31T07:27:29.910Z"
+  }
+]
